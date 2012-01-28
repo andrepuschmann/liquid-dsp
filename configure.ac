@@ -230,6 +230,11 @@ powerpc*)
                    src/dotprod/src/dotprod_rrrf.av.o \
                    src/dotprod/src/dotprod_crcf.av.o"
     ARCH_OPTION="-fno-common -faltivec";;
+arm*)
+    MLIBS_DOTPROD="src/dotprod/src/dotprod_cccf.o \
+                   src/dotprod/src/dotprod_rrrf.neon.o \
+                   src/dotprod/src/dotprod_crcf.neon.o"
+    ARCH_OPTION="-march=armv7-a -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp";;
 *)
     # unknown architecture : use portable C version
     MLIBS_DOTPROD="src/dotprod/src/dotprod_cccf.o \
