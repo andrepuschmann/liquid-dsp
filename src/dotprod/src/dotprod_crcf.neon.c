@@ -44,30 +44,46 @@ void dotprod_crcf_run(float *_h,
     *_y = r;
 }
 
+// (x + yi) u = xu + yu i
 void dotprod_crcf_run4(float *_h,
                        float complex *_x,
                        unsigned int _n,
                        float complex * _y)
 {
-    float complex r=0;
+    float32x2_t h_1;
+    float32x2_t h_2;
+    float32x4_t x_float_vec;
+    float32x4_t x_comp_vec;
+    float32x4_t acc_vec = vdupq_n_f32(0); /* init to zero */
+    float complex res = 0;
 
-    // t = 4*(floor(_n/4))
-    unsigned int t=(_n>>2)<<2; 
-
-    // compute dotprod in groups of 4
-    unsigned int i;
-    for (i=0; i<t; i+=4) {
-        r += _h[i]   * _x[i];
-        r += _h[i+1] * _x[i+1];
-        r += _h[i+2] * _x[i+2];
-        r += _h[i+3] * _x[i+3];
+    /* process two complex floats at once */
+    unsigned int i = 0;
+    for (i = 0; i < _n / 2; i++) {
+        /* load floats and combine to one */
+        h_1 = vld1_dup_f32 (&_h[i * 2]);
+        h_2 = vld1_dup_f32 (&_h[(i * 2) + 1]);
+        x_float_vec = vcombine_f32(h_1, h_2);
+        /* load two complex floats, treat real and imaginary part as float */
+        x_comp_vec = vld1q_f32((float *)&_x[i * 2]);
+        /* multiply and add them to result vector */
+        acc_vec = vmlaq_f32 (acc_vec, x_float_vec, x_comp_vec);
+    }
+    
+    /* take care of the rest */
+    if (_n % 4) {
+        for (i = _n - (_n % 2) ; i < _n; i++) {
+           res += _h[i] * _x[i];
+        }
     }
 
-    // clean up remaining
-    for ( ; i<_n; i++)
-        r += _h[i] * _x[i];
-
-    *_y = r;
+    /* split result and add them up */
+    h_1 = vget_high_f32(acc_vec);
+    h_2 = vget_low_f32(acc_vec);
+    h_2 = vadd_f32(h_1, h_2); 
+    res += vget_lane_f32(h_2, 0) + I * vget_lane_f32(h_2, 1);
+    
+    *_y = res;
 }
 
 
